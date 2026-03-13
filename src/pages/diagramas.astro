@@ -1,0 +1,358 @@
+---
+// src/pages/diagramas.astro
+// Actividad 4 — Sistema Distribuido de Procesamiento de Tareas
+// Vista de Diagramas de Arquitectura UML Interactivos
+---
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Diagramas de Arquitectura — Sistema Distribuido</title>
+  <meta name="description" content="Diagramas UML del sistema distribuido de procesamiento de tareas." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ── Reset & Tokens ─────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0d1117;
+      --surface:   #161b22;
+      --border:    #30363d;
+      --text:      #e6edf3;
+      --muted:     #8b949e;
+      --accent:    #58a6ff;
+      --green:     #3fb950;
+      --yellow:    #d29922;
+      --red:       #f85149;
+      --purple:    #bc8cff;
+      --radius:    8px;
+      --font-mono: 'JetBrains Mono', monospace;
+      --font-sans: 'Inter', sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      padding: 24px;
+      line-height: 1.6;
+    }
+
+    /* ── Layout ─────────────────────────────────────────── */
+    .app-shell {
+      max-width: 960px;
+      margin: 0 auto;
+      display: grid;
+      gap: 20px;
+    }
+
+    /* ── Header ─────────────────────────────────────────── */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header-left h1 {
+      font-size: 1.15rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+
+    .header-left p {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 18px;
+      border-radius: var(--radius);
+      border: 1px solid transparent;
+      font-family: var(--font-sans);
+      font-size: 0.84rem;
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--text);
+      border-color: var(--border);
+    }
+    .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* ── Cards ──────────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+
+    .card-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-desc {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 20px;
+    }
+
+    .mermaid-container {
+      position: relative;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 40px 20px 20px;
+      display: flex;
+      justify-content: center;
+      overflow-x: auto;
+      transition: all 0.2s ease;
+    }
+
+    .expand-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      cursor: pointer;
+      z-index: 10;
+      transition: all 0.2s;
+    }
+    .expand-btn:hover {
+      background: var(--border);
+      color: var(--accent);
+    }
+
+    /* Modificador Fullscreen */
+    .mermaid-container.fullscreen {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      width: 100vw; height: 100vh;
+      z-index: 9999;
+      padding: 60px;
+      align-items: center;
+      background: rgba(13, 17, 23, 0.95);
+      backdrop-filter: blur(10px);
+      border: none;
+      border-radius: 0;
+    }
+
+    .mermaid-container.fullscreen .mermaid {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .mermaid-container.fullscreen .mermaid svg {
+      width: 100% !important;
+      height: 100% !important;
+      max-width: 90vw !important;
+      max-height: 80vh !important;
+    }
+
+    .mermaid-container.fullscreen .expand-btn {
+      top: 24px; right: 24px;
+      padding: 8px 16px;
+      font-size: 1rem;
+      background: var(--red);
+      color: white;
+      border: transparent;
+    }
+    .mermaid-container.fullscreen .expand-btn:hover {
+      background: #ff7b72;
+    }
+
+    /* Ocultar elementos en el fondo al maximizar para evitar colisiones de Z-Index */
+    .app-shell.is-fullscreen > .header,
+    .app-shell.is-fullscreen > .card:not(.has-fullscreen) {
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    /* ── Footer ─────────────────────────────────────────── */
+    .footer {
+      text-align: center;
+      font-size: 0.72rem;
+      color: var(--muted);
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+  </style>
+
+  <!-- Script de inicialización de Mermaid -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10.8.0/dist/mermaid.min.js"></script>
+  <script>
+      document.addEventListener("DOMContentLoaded", function () {
+          // @ts-ignore
+          window.mermaid.initialize({ 
+              startOnLoad: true,
+              theme: 'dark', // Tema oscuro compatible con el UI del proyecto
+              themeVariables: {
+                  primaryColor: '#161b22',
+                  primaryBorderColor: '#30363d',
+                  primaryTextColor: '#e6edf3',
+                  lineColor: '#58a6ff',
+                  secondaryColor: '#0d1117',
+                  tertiaryColor: '#161b22',
+                  fontFamily: 'Inter, sans-serif'
+              }
+          });
+      });
+
+      // Lógica de fullscreen vinculada a la ventana para accionarse en el HTML
+      // @ts-ignore
+      window.toggleFullscreen = function(containerId, btnElement) {
+          const container = document.getElementById(containerId);
+          if (!container) return;
+          
+          const card = container.closest('.card');
+          const shell = document.querySelector('.app-shell');
+          
+          if (container.classList.contains('fullscreen')) {
+              container.classList.remove('fullscreen');
+              if(shell) shell.classList.remove('is-fullscreen');
+              if(card) card.classList.remove('has-fullscreen');
+              btnElement.textContent = "🔍 Maximizar Diagrama";
+          } else {
+              container.classList.add('fullscreen');
+              if(shell) shell.classList.add('is-fullscreen');
+              if(card) card.classList.add('has-fullscreen');
+              btnElement.textContent = "✖ Cerrar Vista Completa";
+          }
+      };
+  </script>
+</head>
+<body>
+  <div class="app-shell">
+
+    <!-- ══ HEADER ══ -->
+    <header class="header">
+      <div class="header-left">
+        <h1>Diagramas de Arquitectura UML</h1>
+        <p>Modelado visual del Sistema Distribuido de Procesamiento de Tareas</p>
+      </div>
+      <div>
+        <a href="/" class="btn btn-secondary">← Volver al Dashboard</a>
+      </div>
+    </header>
+
+    <!-- ══ DIAGRAMA DE COMPONENTES ══ -->
+    <div class="card">
+      <div class="card-title">1. Diagrama de Componentes</div>
+      <div class="card-desc">Ilustra la estructura modular y las dependencias entre la UI (Astro), el gestor de red Singleton y el Web Worker.</div>
+      <div class="mermaid-container" id="diagram-1">
+        <button class="expand-btn" onclick="toggleFullscreen('diagram-1', this)">🔍 Maximizar Diagrama</button>
+        <div class="mermaid">
+{`graph TD
+    UI["Interfaz UI (Astro)"]
+    NM["NetworkManager (Singleton/Observer)"]
+    BC(["Red (BroadcastChannel API)"])
+    W["Web Worker (Hilo Secundario)"]
+    
+    UI -->|Observa y Ejecuta| NM
+    NM -->|Notifica UI| UI
+    NM -->|Emite Eventos| BC
+    BC -->|Dispara Eventos| NM
+    UI -->|Instancia Nuevo| W
+    W -->|Retorna postMessage| UI`}
+        </div>
+      </div>
+      <p style="margin-top: 15px; font-size: 0.85rem; color: var(--muted); font-style: italic;"><strong>Nota.</strong> Los componentes de la arquitectura están claramente seccionados para favorecer su lectura; el flujo de ejecución mantiene dependencias de forma colaborativa pero desacoplada.</p>
+    </div>
+
+    <!-- ══ DIAGRAMA DE SECUENCIA ══ -->
+    <div class="card">
+      <div class="card-title">2. Diagrama de Secuencia Transaccional</div>
+      <div class="card-desc">Demuestra cómo fluye un evento desde que el usuario despacha una tarea hasta que el hilo secundario la completa sin bloquear la interfaz.</div>
+      <div class="mermaid-container" id="diagram-2">
+        <button class="expand-btn" onclick="toggleFullscreen('diagram-2', this)">🔍 Maximizar Diagrama</button>
+        <div class="mermaid">
+{`sequenceDiagram
+    participant Nodo A (UI)
+    participant NM (Red Local)
+    participant BC (BroadcastChannel)
+    participant Nodo B (UI)
+    participant Worker (Hilo Secundario B)
+
+    Nodo A (UI)->>NM (Red Local): Despacha Tarea
+    NM (Red Local)->>BC: broadcast(TASK_DISPATCHED)
+    BC-->>NM (Red Local): Recibe (Nodo B)
+    NM (Red Local)->>Nodo B (UI): notificaObservers()
+    Nodo B (UI)->>Worker: worker.postMessage()
+    Note over Worker: Ejecuta 50 Millones de iteraciones
+    Worker-->>Nodo B (UI): Retorna RESULTADO asíncrono
+    Nodo B (UI)->>NM (Red Local): network.broadcast(TASK_COMPLETED)
+    NM (Red Local)->>BC: broadcast()
+    BC-->>Nodo A (UI): Notifica finalización en pantalla`}
+        </div>
+      </div>
+      <p style="margin-top: 15px; font-size: 0.85rem; color: var(--muted); font-style: italic;"><strong>Nota.</strong> Se modela explícitamente la invocación asíncrona mediante delegación al Worker, retornando la evaluación sin interrumpir las actualizaciones de vista principal.</p>
+    </div>
+
+    <!-- ══ DIAGRAMA DE DESPLIEGUE ══ -->
+    <div class="card">
+      <div class="card-title">3. Diagrama de Despliegue</div>
+      <div class="card-desc">Representación física/lógica de cómo múltiples nodos (pestañas) se conectan simultáneamente simulando una red Peer-to-Peer.</div>
+      <div class="mermaid-container" id="diagram-3">
+        <button class="expand-btn" onclick="toggleFullscreen('diagram-3', this)">🔍 Maximizar Diagrama</button>
+        <div class="mermaid">
+{`graph TD
+    subgraph L1 ["Computadora (localhost)"]
+        subgraph L2 ["Navegador Web (Chrome / Firefox)"]
+            N1["Pestaña 1 - Nodo A"]
+            N2["Pestaña 2 - Nodo B"]
+            N3["Pestaña 3 - Nodo C"]
+            
+            BC{{"Canal de Red (Sistema Operativo)"}}
+            
+            N1 -->|Conexión Continua| BC
+            BC -->|Distribuye| N1
+            N2 -->|Conexión Continua| BC
+            BC -->|Distribuye| N2
+            N3 -->|Conexión Continua| BC
+            BC -->|Distribuye| N3
+        end
+    end`}
+        </div>
+      </div>
+      <p style="margin-top: 15px; font-size: 0.85rem; color: var(--muted); font-style: italic;"><strong>Nota.</strong> Representación arquitectónica Peer-to-Peer. Todos los nodos son clientes simultáneos conectándose a través del puente de comunicación que provee el sistema operativo subyacente.</p>
+    </div>
+
+    <footer class="footer">
+      Sistema Distribuido de Procesamiento de Tareas — Modelado Arquitectónico
+    </footer>
+  </div>
+</body>
+</html>
